@@ -1,0 +1,315 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[a4paper,top=3.5cm,bottom=3.5cm,left=2.5cm,right=2.5cm,marginparwidth=1.75cm]{geometry}
+\usepackage{graphicx}
+\usepackage[french,english]{babel} 
+\usepackage{multicol}
+\usepackage{fancyhdr}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage[labelfont=bf]{caption}
+\usepackage{float}
+%\usepackage[sorting=none]{biblatex}
+
+\pagestyle{fancy}
+\lhead{Ecole des Mines de Paris\hspace{1cm}---}
+\chead{Trimestre Recherche}
+\rhead{---\hspace{1cm}Année scolaire 2021-2022}
+
+\setlength\parindent{0px}
+\providecommand{\keywords}[1]{\textbf{\textit{Keywords ---}} #1}
+\newcommand{\saut}{\vspace{10px}}
+
+\begin{document}
+
+\begin{center}
+    \begin{Large}\textbf{Multi-task model to enhance short-term numerical weather predictions in Monaco}\end{Large}
+    
+    \vspace{1cm}
+    \begin{large}\textbf{\underline{D.Castro$^a$}}\end{large}
+    
+    \vspace{0.5cm}
+    a. \href{mailto:david.castro@mines-paristech.fr}{david.castro@mines-paristech.fr}
+    \vspace{1cm}
+\end{center}
+
+\begin{abstract}
+\textit{Abstract...}
+\end{abstract}
+
+\saut
+
+\keywords{Weather prediction, Multi-task neural network}
+
+\section{Introduction}
+
+Accurate and precise solar and wind predictions are critical to the planning and use of renewable energies so that
+power production can switch to dispatchable sources when strictly necessary. This concern has led to a large amount of
+scientific articles. Many of them seek disruptive ways to predict future weather-related values including deep learning
+\cite{zhong_multi-view_2021}.
+Present work focuses on the usage of solar and wind power whitin the scope of a renewable energy-powered boats race
+-- the Energy Boat Challenge organized each year since 2014 by the Monaco Yacht Club. Therefore, its goal is to provide
+solar irradiance and wind speed and direction predictions that would enable either the pilotes to better anticipate
+performances or people in charge to adapt the race's schedule. The quality of predictions being less critical than
+when it comes to power generation and the purpose being specific, the models implemented are strictly limited to
+local and short term prediction, namely over a few hours following present hour and at Monaco.
+
+\saut
+
+\emph{Zhong et al.} proposed an error correction multi-view deep learning network to predict
+solar irradiance \cite{zhong_multi-view_2021}. The implemented model learns three different representations of the inputs 
+to output one hour ahead irradiance. Similarly, \emph{Gulin et al.} built a predictor-corrector also meant to solar irradiance
+forecast \cite{gulin_predictor-corrector_2015}. It tackles the lag and computational effort needed by numerical methods by implementing an observation-based model. It is composed of two parts: the predictor outputs raw
+predictions of future solar irradiance as measurements become available while the corrector aims at transforming
+the corrector's result to enhance precision.
+
+\saut
+
+In both cases, the models are uniquely based on observations, that is to say they don't rely on a physical model.
+They are pure supervised learning algorithms. By contrast, present work introduce a different approach consisting in
+merging weather series from different types of sources : Numerical Weather Predictions (NWP) on the one hand and
+local measurements on the other. Such method aims at enhancing the available numerical weather prediction by 
+adding data from local and intentionnally specific observations in near real-time. A few articles tackling the
+enhancement of NWP can be found. For instance, \emph{Huang et al.} rely on the fusion of several numerical models to 
+output more accurate predictions than each one of them \cite{huang_integrating_2012}. The issue consisting in the fusion 
+of \emph{in-situ} observations is also widely documented since it is the starting point of NWP, called
+\emph{data assimilation}: that stands for the computation
+of the inital conditions of the forecast model. Thus, it is not a \emph{a posteriori} revision of the model's results but
+a part of it. 
+
+\saut
+
+The following work rather answers to the question : can local observations help with NWP correction?
+As revealed by \emph{Gulin et al.}, meteorological models complexity and their spatial resolution make NWP
+correction an important issue \cite{gulin_predictor-corrector_2015}. This method is very ambitious in the general case and
+is made possible here only thanks to the problem's specificity.
+
+\saut
+
+Beyond the previous question, considering the correlation between solar and wind power,
+surface temperature and wind waves, this paper also raises the more specific question: can
+observation-based NWP correction benefit from a single model gathering all the tasks targeted in comparison with
+separate models for each of them? Multi-task models, predicting simultaneously solar irradiance and the wind vector,
+were built to this end. \emph{Ruder} \cite{ruder_overview_2017} and \emph{Zang et al.} \cite{zhang_overview_2018}
+introduce the key concepts of this type of networks.
+
+\section{Method}
+
+The issue is first to investigate NWP correction thanks to local measurements and secondly to evaluate
+the effectiveness of a multi-task model to do so. Both questions need before all to implement baseline models
+providing some elements of comparison to latter models and revealing whether even a simple model can
+capture some useful information from local measurements to add to NWP.
+
+\vspace{-30px}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{img/structure.pdf}
+    \vspace{-30px}
+    \caption{\textit{General architecture}}
+   \label{fig:Fig. 1}
+\end{figure}
+
+\saut
+
+Figure \ref{fig:Fig. 1} represent the general structure chosen for the investigated models. In general, for each
+explanatory variable, they take
+as input the series of the $n$ last measurements and a $2n$-long series of numerical predictions : the $n$ last
+predictions (from $t - n + 1$ to $t$) and the $n$ next ones (from $t + 1$ to $t + n$) when the targeted output is
+value at time $t + 1, \dots, t + k$ where $k$ is the number of outputs of the task -- equal to $1$ on the figure.
+It is clearly preferable to have $k \leq n$ and $n \leq 6$ considering the availability of NWP on live.
+
+% Common model architecture explanations
+
+\subsection*{Available data}
+
+The implemented models focus on Global Horizontal Irradiance (GHI) as a measurement of solar power
+and wind speed and wind direction as a measurement of wind power.
+However, in order to avoid working with angles, wind inputs and outputs
+take the form of the cartesian coordinates of the wind. Therefore, these are not direct measurements. Temperature will
+also be considered but only as input. In other words, no model looks for predicting future temperature since it is
+not directly responsible for the amount of renewable energy received, either solar or wind. Yet, it is still expected to
+bear useful information to predict GHI or wind. GHI observations used are not direct measurements neither but
+computed from satellite data. Considering this method reliability, such observations are nevertheless trusted.
+
+\saut
+
+The numerical weather predictions used to evaluate the following models 
+stem from the Europe Center for Medium-Range Weather Forecast (ECMWF), measurements come from a public
+Météo-France buoy near Monaco and the SoDa database at the location of the buoy. Reanalyses from SoDa and
+the Copernicus programme were also used to check data consistency. The quality control procedure (QCP) achieved
+try to follow as much as possible the WMO standards \cite{organization_wmo_guidelines_2021}. Finally,
+the considered data range from may to septembre each year between 2016 and 2021 and all have a one hour
+time step.
+
+% QCP and data engineering
+
+\subsection*{Baseline}
+
+The implemented baseline is meant to assess two different key points : first, the performances allowed by a simple
+model that more sophisticated models are to enhance and secondly, the way in which the different data
+series individually participate in such performances. To address these issues, the baselines mainly consist in single-output
+linear regressions, that is to say outputing the value of a unique feature one hour ahead.
+The choice of another machine learning algorithm -- regression random forest or persistance for instance -- have little
+impact on targeted metrics.
+
+\saut
+
+In order to assess the impact of each part of the input on the quality of predictions, several architectures were investigated.
+The simplest model built consists in auto-regression only based on past measurements of the targeted value.
+It is meant to estimate the role of observations. A second basis corresponds to a linear regression taking as input
+one hour ahead NWP and trained with measurements as output. That stands for a first attempt to implement a
+NWP corrector model.
+
+\saut
+
+Remaining baseline models take as input a series of $n$ past measurements, $n$ past NWP, the $n$ next
+numerical predictions per feature, for one or several feature -- including at least the targeted one -- and $n = 3$ or
+$6$ typically.
+
+\subsection*{Multi-task models}
+
+In order to answer the second question raised by the introduction, several multi-task models were implemented.
+They aim at revealing potential transfer learning between the predictions schemes of the different values targeted.
+Regarding the amount of data available, the first multi-task network built contains two shared layers and
+one specific layer per predicted feature.
+
+\vspace{-40px}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=.9\linewidth]{img/heads.pdf}
+    \vspace{-30px}
+    \caption{\textit{Multi-task network architecture}}
+    \label{fig:Fig. 3}
+\end{figure}
+
+% Remaining explanation
+
+\saut
+
+The second model implemented is a multi-task \emph{ResNet}, which stands for residual network and consists in adding
+the input to the output so that the model learns from the error between NWP and observations rather than observations
+themselves directly.
+The last multi-task network evaluated has convolutional shared layers so that it learns an abstract representation of the
+data sent to each value-specific head.
+
+% Remaining explanation
+
+\section{Results and discussion}
+\subsection*{Baseline}
+
+The results of the baseline models are illustrated through wind speed predictions. Conclusions are very similar
+for the other features. Figure \ref{fig:Fig. 4} plots the results of a linear regression in dimension $1$, the explanatory
+variable being NWP at time $t$ and the targeted output being the measured value at time $t + 1$. Analyzing both
+the NWP empirical error distribution and the one of the
+output of the model, such correction mainly removes the systematic bias.
+Hence the need for adding past measurements to the input. This is what is done by the model whose results
+are represented Figure \ref{fig:Fig. 5}.
+
+% Continuing these explanations
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{img/base.png}
+    \caption{\textit{Wind speed simple regression result}}
+    \label{fig:Fig. 4}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{img/baseline.png}
+    \caption{\textit{Wind speed baseline result}}
+    \label{fig:Fig. 5}
+\end{figure}
+
+However, it is remarkable that an auto-regression leads to almost as good results as the previous model, either
+considering their empirical error distributions or their RMSE. Figure \ref{fig:Fig. 6} plots the coefficients associated to
+each model in order to compare the hidden mechanisms behind such predictions. What appears is first that
+the auto-regression here is near to a persistance model in addition to bias correction: the predicted output is
+approximately a linear function of the observation at time $t - 1$. Secondly, the previous model, called \emph{baseline},
+has quite similar coefficients as the auto-regression's. The main difference between the two series of coefficients
+lies in the intercept: whereas the auto-regression has a high one which stands for bias correction, the second model
+has a very low intercept since the bias correction is rather computed from future NWP and past observations and NWP.
+That reveals the interest of taking into account both measurements and short-term NWP.
+
+\saut
+
+That is also what explains that auto-regression is not effective for all features: it leads to bad performances for the GHI
+for instance. Yet, it is clear that such a linear regression over NWP and measurements, whose coefficients were
+plotted, doesn't benefit the most from both series. It is therefore expected that a non-linear model reaches
+better precision and even more a multi-task model which is able to exploit the similarity between the prediction of
+the GHI and the wind.
+
+% Almost persistance, that's why it works far worse for ghi --> a bit of luck here but not really interesting in general
+% Interpretation (and other factors : n etc)
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{img/coef.png}
+    \caption{\textit{Wind speed regression coefficients}}
+    \label{fig:Fig. 6}
+\end{figure}
+
+\subsection*{Multi-task networks}
+
+\section*{Conclusion and future work}
+
+\section*{Acknowledgements}
+
+\bibliographystyle{unsrt}
+\bibliography{references}
+
+\newpage
+
+\section*{TEMPLATE EXAMPLES}
+
+\section{Paragraphe 1}
+\subsection{Longueur du texte}
+Le format souhaité un article scientifique de 20 pages maximum tout compris, synthétisant les résultats du stage de recherche.
+\subsection{Contenu}
+L’article doit contenir les rubriques suivantes :
+\begin{enumerate}
+    \item Une introduction présentant le sujet dans son contexte scientifique. Cette section devra contenir des références (exemple [1] ou encore [2]) pour permettre au lecteur de situer le travail par rapport à l’état de l’art et mettre en avant l’originalité du travail.
+    \item Une présentation des méthodes et outils employés durant le stage de recherche.
+    \item Une présentation des principaux résultats
+    \item Une discussion, une conclusion, des perspectives
+\end{enumerate}
+\subsection{Mise en forme figures, tables, formules}
+Les figures (Fig.\ref{fig:Fig. 1}), tables (Table ~\ref{tab:Table 1}) et équations (Eq. \ref{eq:equation1}) seront numérotées et un renvoi sera inséré dans le texte.
+\begin{equation}
+y =  ax+b
+\label{eq:equation1}
+\end{equation}
+Pensez à conserver une taille suffisante aux légendes des graphes pour une bonne lisibilité.\\
+\\
+\begin{table}[htb]\centering
+\begin{tabular}{ccccc}
+\toprule
+     Colonne 1&Colonne 2&Colonne 3&\multicolumn{2}{c}{colonne 4}\\\cmidrule{4-5}
+      &	 &	&	Sous-colonne 4a	&Sous-colonne 4b\\ \midrule
+      Ligne 1	&Ligne 1&	Ligne 1&	Ligne 1&	Ligne 1\\
+      Ligne 2	&Ligne 2&	Ligne 2	&Ligne 2&	Ligne 2\\
+      \bottomrule
+\end{tabular}
+\caption{Données super importantes}
+\label{tab:Table 1}
+\end{table}
+
+\begin{table}[!h]\centering
+\begin{tabular}{ccccc}
+\toprule
+     Colonne 1&Colonne 2&Colonne 3&\multicolumn{2}{c}{colonne 4}\\\cmidrule{4-5}
+      &	 &	&	Sous-colonne 4a	&Sous-colonne 4b\\ \midrule
+      Ligne 1	&Ligne 1&	Ligne 1&	Ligne 1&	Ligne 1\\
+      Ligne 2	&Ligne 2&	Ligne 2	&Ligne 2&	Ligne 2\\
+      Ligne 3	&Ligne 3&	Ligne 3	&Ligne 3&	Ligne 3\\
+      \bottomrule
+\end{tabular}
+\label{Table 2}
+\caption{Données super importantes}
+\end{table}
+
+\end{document}
