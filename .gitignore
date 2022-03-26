@@ -1,0 +1,11 @@
+
+/data
+
+**/__pycache__
+**/.DS_Store
+
+*.aux
+*.bbl
+*.log
+*.out
+*.gz
