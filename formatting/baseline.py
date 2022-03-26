@@ -89,8 +89,8 @@ class Baseline(Data):
 
         if save_baseline:
             try:
-                df = pd.read_csv('baseline.csv', delimiter=';', header='infer', index_col=0)
-                mod = pd.read_csv('basemod.csv', delimiter=';', header='infer', index_col=0)
+                df = pd.read_csv('models/baseline.csv', delimiter=';', header='infer', index_col=0)
+                mod = pd.read_csv('models/basemod.csv', delimiter=';', header='infer', index_col=0)
             except (EmptyDataError, FileNotFoundError):
                 df = pd.DataFrame()
                 mod = pd.DataFrame(index=['model', 'expl. var.', 'input length', 'obs. only'])
@@ -103,8 +103,8 @@ class Baseline(Data):
             for var in other_explanatory_variables: expl_str += ' ' + var
             if date: expl_str += ' date'
             mod[main_variable] = [f'{model}', expl_str, f'{n_input}', f'{observation_only}']
-            df.to_csv('baseline.csv', sep=';', header=True, index=True)
-            mod.to_csv('basemod.csv', sep=';', header=True, index=True)
+            df.to_csv('models/baseline.csv', sep=';', header=True, index=True)
+            mod.to_csv('models/basemod.csv', sep=';', header=True, index=True)
             print('Data saved : success')
 
     def __plot(self, y_pred: np.ndarray, err: np.ndarray, nwp_err: np.ndarray, plot_hist: bool, plot_graph: bool):
