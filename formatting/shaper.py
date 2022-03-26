@@ -49,9 +49,9 @@ class MultiTaskShaper(Data):
         except NameError:
             pass
         for k, e in enumerate(err.T):
-            if k%10 == 1: suffix = 'st'
-            elif k%10 == 2: suffix = 'nd'
-            elif k%10 == 3: suffix = 'rd'
+            if k%10 == 0: suffix = 'st'
+            elif k%10 == 1: suffix = 'nd'
+            elif k%10 == 2: suffix = 'rd'
             else: suffix = 'th'
             approx(ax, e, f'{k + 1}' + suffix + ' prediction', ('tab:cyan', 'tab:blue'), feature_name in ['ws', 'wx', 'wy', 't'])
         
