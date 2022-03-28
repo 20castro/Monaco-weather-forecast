@@ -4,6 +4,9 @@
 \usepackage[a4paper,top=3.5cm,bottom=3.5cm,left=2.5cm,right=2.5cm,marginparwidth=1.75cm]{geometry}
 \usepackage{graphicx}
 \usepackage[french,english]{babel} 
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
 \usepackage{multicol}
 \usepackage{fancyhdr}
 \usepackage{booktabs}
@@ -132,7 +135,9 @@ take the form of the cartesian coordinates of the wind. Therefore, these are not
 also be considered but only as input. In other words, no model looks for predicting future temperature since it is
 not directly responsible for the amount of renewable energy received, either solar or wind. Yet, it is still expected to
 bear useful information to predict GHI or wind. GHI observations used are not direct measurements neither but
-computed from satellite data. Considering this method reliability, such observations are nevertheless trusted.
+computed from satellite data. They are provided by the HelioClim project consisting in satellite-based measurements
+of the reflection from the clouds and the ground enabling then to model ground irradiance
+\cite{blanc_helioclim_2011}. Considering this method reliability, such observations are nevertheless trusted.
 
 \saut
 
@@ -152,29 +157,53 @@ The implemented baseline is meant to assess two different key points : first, th
 model that more sophisticated models are to enhance and secondly, the way in which the different data
 series individually participate in such performances. To address these issues, the baselines mainly consist in single-output
 linear regressions, that is to say outputing the value of a unique feature one hour ahead.
-The choice of another machine learning algorithm -- regression random forest or persistance for instance -- have little
+The choice of another machine learning algorithm -- regression random forest or persistence for instance -- have little
 impact on targeted metrics.
 
 \saut
 
 In order to assess the impact of each part of the input on the quality of predictions, several architectures were investigated.
-The simplest model built consists in auto-regression only based on past measurements of the targeted value.
+The simplest model built consists in an autoregression only based on past measurements of the targeted value.
 It is meant to estimate the role of observations. A second basis corresponds to a linear regression taking as input
 one hour ahead NWP and trained with measurements as output. That stands for a first attempt to implement a
-NWP corrector model.
+NWP corrector model. None of these two models follow the structure introduced in Figure \ref{fig:Fig. 1}.
 
 \saut
 
 Remaining baseline models take as input a series of $n$ past measurements, $n$ past NWP, the $n$ next
 numerical predictions per feature, for one or several feature -- including at least the targeted one -- and $n = 3$ or
-$6$ typically.
+$6$ typically, as explained Figure \ref{fig:Fig. 1}. Several combination of explanatory variables were investigated.
+In particular, to estimate how the knowledge of time (date and hour) change the quality of the predictions,
+four artificial features were considered as input in some models : the one-year and one-day periodic sines and cosines.
 
 \subsection*{Multi-task models}
 
 In order to answer the second question raised by the introduction, several multi-task models were implemented.
-They aim at revealing potential transfer learning between the predictions schemes of the different values targeted.
-Regarding the amount of data available, the first multi-task network built contains two shared layers and
-one specific layer per predicted feature.
+They aim for revealing potential transfer learning between the predictions schemes of the different values targeted.
+Regarding the amount of data available, the first multi-task network built contains two or three shared layers and
+one or two specific layers per predicted feature.
+
+\saut
+
+As a multi-task model, its training minimizes only one metrics. However, each task leads to one metric, chosen as
+the Mean Squared Error (MSE). In order to solve such a multi-objective optimization problem, the chosen loss
+function of the overall model L is linear combination of the three losses. Let's note them
+$\mathrm{MSE}_{\mathrm T}$
+for each task T which can be T = GHI, $\mathrm W_{\mathrm x}$, $\mathrm W_{\mathrm y}$ for instance.
+That solution corresponds to the multi-task models state-of-the-art.
+Unfortunately, as the three losses can have different order of magnitude, defining
+$L = \sum_{\mathrm T \in \mathrm{tasks}} \mathrm{MSE}_{\mathrm T}$ would cause an imbalanced training: the
+higher the loss of one task, the more the training would focus on it, resulting in ignoring some of the others. To address
+this issue, we have to normalize them by a default value leading us to take:
+
+\[
+	L := \sum_{\mathrm T \in \mathrm{tasks}}
+	\frac{\mathrm{MSE}_{\mathrm T}}{\mathrm{MSE}^{\mathrm{baseline}}_{\mathrm T}}
+\]
+
+By considering the baseline MSE of the task as a normalization factor, having $\mathrm L_{\mathrm{pred}}$ at
+the end of a prediction means that on quadratic average over the tasks, the model is
+$\sqrt{\frac{\mathrm L_{\mathrm{pred}}}{| \mathrm{tasks} | }}$ better or worse than the baselines.
 
 \vspace{-40px}
 
@@ -183,7 +212,7 @@ one specific layer per predicted feature.
     \includegraphics[width=.9\linewidth]{img/heads.pdf}
     \vspace{-30px}
     \caption{\textit{Multi-task network architecture}}
-    \label{fig:Fig. 3}
+    \label{fig:Fig. 2}
 \end{figure}
 
 % Remaining explanation
@@ -192,13 +221,29 @@ one specific layer per predicted feature.
 
 The second model implemented is a multi-task \emph{ResNet}, which stands for residual network and consists in adding
 the input to the output so that the model learns from the error between NWP and observations rather than observations
-themselves directly.
+themselves directly. The corresponding architecture is represented Figure \ref{fig:Fig. 3} for a single-task model. Yet,
+the principle is the same when it comes to a multi-task model. During the training, in the situation represented,
+the model is equivalent to a standard network where the labels were replaced by the difference between the
+labels and the input, which is the numerical prediction error here.
 The last multi-task network evaluated has convolutional shared layers so that it learns an abstract representation of the
-data sent to each value-specific head.
+data sent to each value-specific head. Its main advantage is take into account the structure of the data, that is to say
+that it doesn't flatten the input matrix composed of different type of data series.
+
+\vspace{-30px}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=.9\linewidth]{img/residual.pdf}
+    \vspace{-30px}
+    \caption{\textit{Residual network architecture}}
+    \label{fig:Fig. 3}
+\end{figure}
 
 % Remaining explanation
 
 \section{Results and discussion}
+\subsection*{QCP and data consistency}
+
 \subsection*{Baseline}
 
 The results of the baseline models are illustrated through wind speed predictions. Conclusions are very similar
@@ -225,10 +270,27 @@ are represented Figure \ref{fig:Fig. 5}.
     \label{fig:Fig. 5}
 \end{figure}
 
-However, it is remarkable that an auto-regression leads to almost as good results as the previous model, either
+This model corrects bias too but also reduces the standard variation of the error distribution. In what follows,
+as such distributions approximately verify a gaussian law, the attention is mainly directed towards the standard
+deviation. First, the bias $\hat \varepsilon_0 = \widehat{\mathbb E [ \varepsilon ]}$
+where $\varepsilon$ stands for the error,
+needs much less information to be corrected (which is thus generally the case). Secondly, if $\hat \sigma$ is an estimation
+of the standard deviation of $\varepsilon$, then we have:
+
+\[
+	\mathrm{RMSE} = \sqrt{\frac{1}{N} \sum_{i = 1}^N \varepsilon^2_i} \approx \sqrt{ \mathbb E [\varepsilon^2] }
+	= \sqrt{\hat \sigma^2 + \hat \varepsilon^2_0}
+\]
+
+Therefore, the previous model is more performant regarding both criteria but its concrete interest
+rather lies in the error distribution being sharper.
+
+\saut
+
+However, it is remarkable that an autoregression leads to almost as good results as the previous model, either
 considering their empirical error distributions or their RMSE. Figure \ref{fig:Fig. 6} plots the coefficients associated to
 each model in order to compare the hidden mechanisms behind such predictions. What appears is first that
-the auto-regression here is near to a persistance model in addition to bias correction: the predicted output is
+the auto-regression here is near to a persistence model in addition to bias correction: the predicted output is
 approximately a linear function of the observation at time $t - 1$. Secondly, the previous model, called \emph{baseline},
 has quite similar coefficients as the auto-regression's. The main difference between the two series of coefficients
 lies in the intercept: whereas the auto-regression has a high one which stands for bias correction, the second model
@@ -237,13 +299,14 @@ That reveals the interest of taking into account both measurements and short-ter
 
 \saut
 
-That is also what explains that auto-regression is not effective for all features: it leads to bad performances for the GHI
+That is also what explains that an autoregressive scheme
+is not effective for all features: it leads to bad performances for the GHI
 for instance. Yet, it is clear that such a linear regression over NWP and measurements, whose coefficients were
 plotted, doesn't benefit the most from both series. It is therefore expected that a non-linear model reaches
 better precision and even more a multi-task model which is able to exploit the similarity between the prediction of
 the GHI and the wind.
 
-% Almost persistance, that's why it works far worse for ghi --> a bit of luck here but not really interesting in general
+% Almost persistence, that's why it works far worse for ghi --> a bit of luck here but not really interesting in general
 % Interpretation (and other factors : n etc)
 
 \begin{figure}[H]
