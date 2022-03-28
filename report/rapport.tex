@@ -46,6 +46,24 @@
 
 \keywords{Weather prediction, Multi-task neural network}
 
+\section*{Notations}
+
+NWP: Numerical Weather Predictions\\
+\\
+REAN: Reanalyses\\
+\\
+GHI: Global Horizontal Irradiance\\
+\\
+WS: Wind Speed\\
+\\
+WD: Wind Direction\\
+\\
+SHWW: Significant Height of Wind Waves\\
+\\
+For a feature F : $\mathrm F (t)$ is the measured value at time $t$, $\hat{\mathrm F}^\mathrm{NWP} (t + dt | t)$ is
+the numerical prediction of F at time $t + dt$ knowing the history of the system
+and $\hat{\mathrm F}^* (t + dt | t)$, the optimal model-based obtained prediction of F at time $t + dt$ knowing the history.
+
 \section{Introduction}
 
 Accurate and precise solar and wind predictions are critical to the planning and use of renewable energies so that
@@ -149,7 +167,35 @@ try to follow as much as possible the WMO standards \cite{organization_wmo_guide
 the considered data range from may to septembre each year between 2016 and 2021 and all have a one hour
 time step.
 
-% QCP and data engineering
+\subsection*{Data consistency}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=.95\linewidth]{img/shww.png}
+    \caption{\textit{Wind wave height}}
+   \label{shww}
+\end{figure}
+
+Initially, this work was also expected to take into account the significant height of wind waves and their mean periods.
+It is indeed an important factor concerning boat piloting. Moreover, wind waves were considered rather than well
+first because of geographical criteria and secondly because of their coupled dynamics with respect to wind, making it
+a good candidate as part of a multi-task model. However, as illustrated in Figure \ref{shww}, the measurements, the
+numerical predictions and the reanalyses were not consistent enough and thus could not be exploited. The two
+latter logically fit well because by definition NWP takes part in the computation of reanalyses. Yet, the observations
+don't match with them, being generally higher and quite uncorrelated. A possible explanations is that such measurements
+are polluted by ship-generated waves, the buoy where the date comes from being close to some crowded shipping
+routes. Concerning the mean period of wind waves, the high quantization step size made it unusable neither.
+
+\saut
+
+On the contrary, as shown for wind speed on Figure \ref{ws_straight}, ...
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{img/ws_compare.png}
+    \caption{\textit{Wind speed regression}}
+   \label{ws_straight}
+\end{figure}
 
 \subsection*{Baseline}
 
@@ -242,8 +288,6 @@ that it doesn't flatten the input matrix composed of different type of data seri
 % Remaining explanation
 
 \section{Results and discussion}
-\subsection*{QCP and data consistency}
-
 \subsection*{Baseline}
 
 The results of the baseline models are illustrated through wind speed predictions. Conclusions are very similar
