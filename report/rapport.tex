@@ -39,12 +39,20 @@
 \end{center}
 
 \begin{abstract}
-\textit{Abstract...}
+\vspace{5px}
+\noindent Within the scope of the Energy Boat Challenge, this paper focuses on short-term solar and wind power 
+prediction as a support to renewable-energy powered boats piloting. Considering both model-based numerical
+predictions and \emph{in-situ} observations, the implemented models aim for correcting the former by
+adding the latter's information. Although machine and deep learning techniques meant to weather prediction
+have recently led to a number of articles, a few take into account several types of inputs.
+To that end, a simple baseline model was first investigated, revealing that
+numerical predictions can easily be corrected that way and achieving satisfactory performances. ...
+% Multi-task, result, perspective, originality ?
 \end{abstract}
 
 \saut
 
-\keywords{Weather prediction, Multi-task neural network}
+\keywords{Weather prediction, Multi-task neural network, NWP correction}
 
 \section*{Notations}
 
@@ -176,7 +184,8 @@ time step.
    \label{shww}
 \end{figure}
 
-Initially, this work was also expected to take into account the significant height of wind waves and their mean periods.
+Initially, this work was also expected to take into account the significant height of wind waves (SHWW)
+and their mean periods (MPWW).
 It is indeed an important factor concerning boat piloting. Moreover, wind waves were considered rather than well
 first because of geographical criteria and secondly because of their coupled dynamics with respect to wind, making it
 a good candidate as part of a multi-task model. However, as illustrated in Figure \ref{shww}, the measurements, the
@@ -372,36 +381,27 @@ the GHI and the wind.
 
 \subsection*{Multi-task networks}
 
-\section*{Conclusion and future work}
+Each of the multi-task, the residual multi-task and the convolutional multi-task models led to similar results. They
+learn well, as shown on Figure "upload figure" and stop when they approximately reach the baseline performances.
+As a matter of fact, the loss function were designed so that, the models equals the baseline on quadratic average
+over the tasks when the loss reaches 10.
 
-\section*{Acknowledgements}
+\begin{figure}[H]
+\centering
+\begin{minipage}{.5\textwidth}
+	\centering
+	\includegraphics[width=.95\linewidth]{img/restrain.png}
+	\captionof{figure}{A figure}
+	\label{fig:test1}
+\end{minipage}%
+\begin{minipage}{.5\textwidth}
+	\centering
+	\includegraphics[width=.95\linewidth]{img/convtrain.png}
+	\captionof{figure}{Another figure}
+	\label{fig:test2}
+\end{minipage}
+\end{figure}
 
-\bibliographystyle{unsrt}
-\bibliography{references}
-
-\newpage
-
-\section*{TEMPLATE EXAMPLES}
-
-\section{Paragraphe 1}
-\subsection{Longueur du texte}
-Le format souhaité un article scientifique de 20 pages maximum tout compris, synthétisant les résultats du stage de recherche.
-\subsection{Contenu}
-L’article doit contenir les rubriques suivantes :
-\begin{enumerate}
-    \item Une introduction présentant le sujet dans son contexte scientifique. Cette section devra contenir des références (exemple [1] ou encore [2]) pour permettre au lecteur de situer le travail par rapport à l’état de l’art et mettre en avant l’originalité du travail.
-    \item Une présentation des méthodes et outils employés durant le stage de recherche.
-    \item Une présentation des principaux résultats
-    \item Une discussion, une conclusion, des perspectives
-\end{enumerate}
-\subsection{Mise en forme figures, tables, formules}
-Les figures (Fig.\ref{fig:Fig. 1}), tables (Table ~\ref{tab:Table 1}) et équations (Eq. \ref{eq:equation1}) seront numérotées et un renvoi sera inséré dans le texte.
-\begin{equation}
-y =  ax+b
-\label{eq:equation1}
-\end{equation}
-Pensez à conserver une taille suffisante aux légendes des graphes pour une bonne lisibilité.\\
-\\
 \begin{table}[htb]\centering
 \begin{tabular}{ccccc}
 \toprule
@@ -411,22 +411,23 @@ Pensez à conserver une taille suffisante aux légendes des graphes pour une bon
       Ligne 2	&Ligne 2&	Ligne 2	&Ligne 2&	Ligne 2\\
       \bottomrule
 \end{tabular}
-\caption{Données super importantes}
-\label{tab:Table 1}
+\caption{Multi-task models results}
+\label{tab:results}
 \end{table}
 
-\begin{table}[!h]\centering
-\begin{tabular}{ccccc}
-\toprule
-     Colonne 1&Colonne 2&Colonne 3&\multicolumn{2}{c}{colonne 4}\\\cmidrule{4-5}
-      &	 &	&	Sous-colonne 4a	&Sous-colonne 4b\\ \midrule
-      Ligne 1	&Ligne 1&	Ligne 1&	Ligne 1&	Ligne 1\\
-      Ligne 2	&Ligne 2&	Ligne 2	&Ligne 2&	Ligne 2\\
-      Ligne 3	&Ligne 3&	Ligne 3	&Ligne 3&	Ligne 3\\
-      \bottomrule
-\end{tabular}
-\label{Table 2}
-\caption{Données super importantes}
-\end{table}
+\section*{Conclusion and future work}
+
+% Conclusion
+The most promising perspective would be to take into account the space dimension, that is to say not to take as input
+the timeseries of each feature at a specific location -- here Monaco -- but a grid of such values all around the
+targeted place for each timestep. That would especially allow more sophisticated convolutional models.
+It would also be interesting to investigate recurrent networks and particularly
+LSTM which can learn short-term as well as long-term mechanisms. Yet, the main obstacle remains the amount of data
+available which keeps from implementing deep networks.
+
+\section*{Acknowledgements}
+
+\bibliographystyle{unsrt}
+\bibliography{references}
 
 \end{document}
