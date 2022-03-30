@@ -43,11 +43,25 @@
 \noindent Within the scope of the Energy Boat Challenge, this paper focuses on short-term solar and wind power 
 prediction as a support to renewable-energy powered boats piloting. Considering both model-based numerical
 predictions and \emph{in-situ} observations, the implemented models aim for correcting the former by
-adding the latter's information. Although machine and deep learning techniques meant to weather prediction
+adding the latter's information.
+Such strategy is first motivated by the will to combine numerical models' ability to provide valuable information
+over many hours ahead and observations' accuracy.
+Although machine and deep learning techniques meant to weather prediction
 have recently led to a number of articles, a few take into account several types of inputs.
 To that end, a simple baseline model was first investigated, revealing that
-numerical predictions can easily be corrected that way and achieving satisfactory performances. ...
-% Multi-task, result, perspective, originality ?
+numerical predictions can easily be corrected that way and achieving satisfactory performances.
+Then, as this work focuses on different tasks, multi-tasks neural networks were implemented in order to
+benefit the most from the similarity between solar irradiance and wind predictions. Yet, none of them
+managed to beat the linear models' results. It even appears that a simple autoregression on each feature
+separately outputs almost as good results as the previous linear regression whereas it ignores numerical
+predictions. As a matter of fact, in both cases, the term that seemingly provides the most valuable information
+to the prediction is the most recent measurement of the targeted feature. Therefore, autoregression can be
+considered the most efficient compromise between the performances and the amount of data needed.
+It reveals that the investigated models didn't succeed in capturing numerical predictions added value with respect
+to \emph{in-situ} observations. To face that limit, the most relevant next step would be to work with data varying
+with both time and space around the targeted location rather than simple timeseries. Doing so would allow
+to deal with the numerical models geographical resolution explicitly and to provide a far more complete information
+to the model.
 \end{abstract}
 
 \saut
@@ -131,16 +145,6 @@ the effectiveness of a multi-task model to do so. Both questions need before all
 providing some elements of comparison to latter models and revealing whether even a simple model can
 capture some useful information from local measurements to add to NWP.
 
-\vspace{-30px}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=\linewidth]{img/structure.pdf}
-    \vspace{-30px}
-    \caption{\textit{General architecture}}
-   \label{fig:Fig. 1}
-\end{figure}
-
 \saut
 
 Figure \ref{fig:Fig. 1} represent the general structure chosen for the investigated models. In general, for each
@@ -151,6 +155,16 @@ value at time $t + 1, \dots, t + k$ where $k$ is the number of outputs of the ta
 It is clearly preferable to have $k \leq n$ and $n \leq 6$ considering the availability of NWP on live.
 
 % Common model architecture explanations
+
+\vspace{-30px}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{img/structure.pdf}
+    \vspace{-30px}
+    \caption{\textit{General architecture}}
+   \label{fig:Fig. 1}
+\end{figure}
 
 \subsection*{Available data}
 
@@ -196,7 +210,12 @@ A possible explanations is that such measurements
 are polluted by ship-generated waves, the buoy where the date comes from being close to some crowded shipping
 routes. Concerning the mean period of wind waves, the high quantization step size made it unusable neither.
 
-\saut
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{img/ws_compare.png}
+    \caption{\textit{Wind speed regression}}
+   \label{ws_straight}
+\end{figure}
 
 On the contrary, as shown for wind speed on Figure \ref{ws_straight}, other features have high correlation levels.
 For instance, the temperature correlation coefficient reaches $0.97$ and the GHI coefficient is equal to $0.98$.
@@ -208,13 +227,6 @@ to complete bigger gaps. Such a choice were made first not to discard to much da
 the data means a much wider loss in terms of training samples -- and secondly considering the low proportion
 of samples concerned. For instance, between 2018 and 2020 included, each feature (except GHI) lacks about
 200 samples over more than 10,000.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=\linewidth]{img/ws_compare.png}
-    \caption{\textit{Wind speed regression}}
-   \label{ws_straight}
-\end{figure}
 
 \subsection*{Baseline}
 
@@ -282,6 +294,16 @@ $\sqrt{\frac{\mathrm L_{\mathrm{pred}}}{| \mathrm{tasks} | }}$ better or worse t
 
 % Remaining explanation
 
+\vspace{-30px}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=.9\linewidth]{img/residual.pdf}
+    \vspace{-30px}
+    \caption{\textit{Residual network architecture}}
+    \label{fig:Fig. 3}
+\end{figure}
+
 \saut
 
 The second model implemented is a multi-task \emph{ResNet}, which stands for residual network and consists in adding
@@ -293,16 +315,6 @@ labels and the input, which is the numerical prediction error here.
 The last multi-task network evaluated has convolutional shared layers so that it learns an abstract representation of the
 data sent to each value-specific head. Its main advantage is take into account the structure of the data, that is to say
 that it doesn't flatten the input matrix composed of different type of data series.
-
-\vspace{-30px}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=.9\linewidth]{img/residual.pdf}
-    \vspace{-30px}
-    \caption{\textit{Residual network architecture}}
-    \label{fig:Fig. 3}
-\end{figure}
 
 % Remaining explanation
 
@@ -333,19 +345,21 @@ are represented Figure \ref{fig:Fig. 5}.
     \label{fig:Fig. 5}
 \end{figure}
 
-This model corrects bias too but also reduces the standard variation of the error distribution. In what follows,
+This model corrects bias too but also reduces the standard deviation of the error distribution. In what follows,
 as such distributions approximately verify a gaussian law, the attention is mainly directed towards the standard
-deviation. First, the bias $\hat \varepsilon_0 = \widehat{\mathbb E [ \varepsilon ]}$
-where $\varepsilon$ stands for the error,
-needs much less information to be corrected (which is thus generally the case). Secondly, if $\hat \sigma$ is an estimation
-of the standard deviation of $\varepsilon$, then we have:
+deviation. First, the bias $\varepsilon_0 = \mathbb E [ \varepsilon ]$ where $\varepsilon$ stands for the error,
+needs much less information to be corrected: bias correction is achieved thanks to a simple addition.
+Most of the investigated models thus remove it. Secondly, if $\hat \sigma$ is an estimate
+of the standard deviation of $\varepsilon$ and $\hat \varepsilon_0$ is the empirical mean
+of $\varepsilon$ -- which is the maximum-likelihood estimate of $\varepsilon_0$ --, we have:
 
 \[
 	\mathrm{RMSE} = \sqrt{\frac{1}{N} \sum_{i = 1}^N \varepsilon^2_i} \approx \sqrt{ \mathbb E [\varepsilon^2] }
 	= \sqrt{\hat \sigma^2 + \hat \varepsilon^2_0}
 \]
 
-Therefore, the previous model is more performant regarding both criteria but its concrete interest
+Therefore, when the a model's bias is indeed negligible, $\mathrm{RMSE} \approx \hat \sigma$.
+The previous model is more performant regarding both criteria but its concrete interest
 rather lies in the error distribution being sharper.
 
 \saut
@@ -353,10 +367,10 @@ rather lies in the error distribution being sharper.
 However, it is remarkable that an autoregression leads to almost as good results as the previous model, either
 considering their empirical error distributions or their RMSE. Figure \ref{fig:Fig. 6} plots the coefficients associated to
 each model in order to compare the hidden mechanisms behind such predictions. What appears is first that
-the auto-regression here is near to a persistence model in addition to bias correction: the predicted output is
-approximately a linear function of the observation at time $t - 1$. Secondly, the previous model, called \emph{baseline},
-has quite similar coefficients as the auto-regression's. The main difference between the two series of coefficients
-lies in the intercept: whereas the auto-regression has a high one which stands for bias correction, the second model
+the autoregression here is near to a persistence model in addition to bias correction: the predicted output is
+approximately a linear function of the observation at time $t$. Secondly, the previous model, called \emph{baseline},
+has quite similar coefficients as the autoregression's. The main difference between the two series of coefficients
+lies in the intercept: whereas the autoregression has a high one which stands for bias correction, the second model
 has a very low intercept since the bias correction is rather computed from future NWP and past observations and NWP.
 That reveals the interest of taking into account both measurements and short-term NWP.
 
@@ -381,9 +395,11 @@ the GHI and the wind.
 
 \subsection*{Multi-task networks}
 
-Each of the multi-task, the residual multi-task and the convolutional multi-task models led to similar results. They
-learn well, as shown on Figure "upload figure" and stop when they approximately reach the baseline performances.
-As a matter of fact, the loss function were designed so that, the models equals the baseline on quadratic average
+Each of the multi-task, the residual multi-task and the convolutional multi-task models actually
+led to similar results as the baselines. The training generalizes well,
+as shown on Figure \ref{fig:Res} and \ref{fig:Conv} and stop
+when the loss approximately reaches the baseline performances.
+As a matter of fact, the loss function were designed so that the models equal the baseline on quadratic average
 over the tasks when the loss reaches 10.
 
 \begin{figure}[H]
@@ -391,36 +407,49 @@ over the tasks when the loss reaches 10.
 \begin{minipage}{.5\textwidth}
 	\centering
 	\includegraphics[width=.95\linewidth]{img/restrain.png}
-	\captionof{figure}{A figure}
-	\label{fig:test1}
+	\captionof{figure}{ResNet training}
+	\label{fig:Res}
 \end{minipage}%
 \begin{minipage}{.5\textwidth}
 	\centering
 	\includegraphics[width=.95\linewidth]{img/convtrain.png}
-	\captionof{figure}{Another figure}
-	\label{fig:test2}
+	\captionof{figure}{ConvNet training}
+	\label{fig:Conv}
 \end{minipage}
 \end{figure}
 
 \begin{table}[htb]\centering
 \begin{tabular}{ccccc}
 \toprule
-     Colonne 1&Colonne 2&Colonne 3&\multicolumn{2}{c}{colonne 4}\\\cmidrule{4-5}
-      &	 &	&	Sous-colonne 4a	&Sous-colonne 4b\\ \midrule
-      Ligne 1	&Ligne 1&	Ligne 1&	Ligne 1&	Ligne 1\\
-      Ligne 2	&Ligne 2&	Ligne 2	&Ligne 2&	Ligne 2\\
+      Feature&NWP RMSE&Baseline RMSE&\multicolumn{2}{c}{Multi-task RMSE}\\\cmidrule{4-5}
+      &	 &	&	Ouput 1	&Output 2\\ \midrule
+      GHI	&40.70&61.03&	44.32&54.38\\
+      $\mathrm W_{\mathrm x}$	&1.97&1.09&1.13&1.36\\
+      $\mathrm W_{\mathrm y}$	&1.12&2.24&1.16&1.43\\
       \bottomrule
 \end{tabular}
 \caption{Multi-task models results}
 \label{tab:results}
 \end{table}
 
+Table \ref{results} compares the RMSE obtained in the different situations: NWP, linear baseline and convolutional
+multi-task network predicting each concerned feature one and two hours ahead. Not only are the multi-task
+RMSE higher but they increase fast with the number of values predicted.
+
 \section*{Conclusion and future work}
 
-% Conclusion
+Finally, multi-tasks neural networks shows unexpectedly bad results and are unable to improve the baseline
+performances. The main conclusion that can be drawn is that the implemented models don't manage to fully
+benefit from the numerical predictions added value with respect to the observations.
+
+\saut
+
 The most promising perspective would be to take into account the space dimension, that is to say not to take as input
 the timeseries of each feature at a specific location -- here Monaco -- but a grid of such values all around the
-targeted place for each timestep. That would especially allow more sophisticated convolutional models.
+targeted place for each timestep.
+As the adopted strategy focusing on NWP correction was in particular chosen to tackle the geographical resolution
+of the numerical models, time-space models can be expected to bring more complete and useful information.
+That would especially allow more sophisticated convolutional models.
 It would also be interesting to investigate recurrent networks and particularly
 LSTM which can learn short-term as well as long-term mechanisms. Yet, the main obstacle remains the amount of data
 available which keeps from implementing deep networks.
